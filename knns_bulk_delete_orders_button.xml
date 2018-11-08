@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modification
+	xmlns="https://github.com/vqmod/vqmod"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="https://github.com/vqmod/vqmod https://raw.githubusercontent.com/vqmod/vqmod/master/vqmod.xsd"
+	>
+	<id><![CDATA[[VQMOD] Bulk delete orders button]]></id>
+	<version>0.1.0</version>
+	<vqmver>2.6.3</vqmver>
+	<author>kanenas.net (aka Nikolas Branis) - nbran@kanenas.net</author>
+	<file path="admin/controller/sale/" name="order.php" error="log">
+		<operation error="skip">
+			<search position="before"><![CDATA[public function edit() {]]></search>
+			<add><![CDATA[
+	// kanenas: knns_bulk_delete_orders_button.xml (start) <<
+	public function delete() {
+		$this->load->language('sale/order');
+
+		$this->document->setTitle($this->language->get('heading_title'));
+
+		$this->load->model('sale/order');
+
+		if (isset($this->request->post['selected']) && $this->validate()) {
+			foreach ($this->request->post['selected'] as $order_id) {
+				$this->model_sale_order->deleteOrder($order_id);
+			}
+
+			$this->session->data['success'] = $this->language->get('text_success');
+
+			$url = '';
+
+			if (isset($this->request->get['filter_order_id'])) {
+				$url .= '&filter_order_id=' . $this->request->get['filter_order_id'];
+			}
+	
+			if (isset($this->request->get['filter_customer'])) {
+				$url .= '&filter_customer=' . urlencode(html_entity_decode($this->request->get['filter_customer'], ENT_QUOTES, 'UTF-8'));
+			}
+	
+			if (isset($this->request->get['filter_order_status'])) {
+				$url .= '&filter_order_status=' . $this->request->get['filter_order_status'];
+			}
+	
+			if (isset($this->request->get['filter_total'])) {
+				$url .= '&filter_total=' . $this->request->get['filter_total'];
+			}
+	
+			if (isset($this->request->get['filter_date_added'])) {
+				$url .= '&filter_date_added=' . $this->request->get['filter_date_added'];
+			}
+	
+			if (isset($this->request->get['filter_date_modified'])) {
+				$url .= '&filter_date_modified=' . $this->request->get['filter_date_modified'];
+			}
+
+			$this->response->redirect($this->url->link('sale/order', 'token=' . $this->session->data['token'] . $url, true));
+		}
+
+		$this->getList();
+	}
+	// kanenas: knns_bulk_delete_orders_button.xml (end) <<
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search position="after"><![CDATA[$data['add'] = $this->url->link('sale/order/add', 'token=' . $this->session->data['token'], 'SSL');]]></search>
+			<add><![CDATA[
+		// kanenas: knns_bulk_delete_orders_button.xml (start) <<
+		$data['delete'] = $this->url->link('sale/order/delete', 'token=' . $this->session->data['token'], 'SSL');
+		// kanenas: knns_bulk_delete_orders_button.xml (end) <<
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search position="before"><![CDATA[public function createInvoiceNo() {]]></search>
+			<add><![CDATA[
+	// kanenas: knns_bulk_delete_orders_button.xml (start) <<
+	protected function validate() {
+		if (!$this->user->hasPermission('modify', 'sale/order')) {
+			$this->error['warning'] = $this->language->get('error_permission');
+		}
+
+		return !$this->error;
+	}
+	// kanenas: knns_bulk_delete_orders_button.xml (end) <<
+			]]></add>
+		</operation>
+	</file>
+	<file path="admin/model/sale/" name="order.php" error="log">
+		<operation error="skip">
+			<search position="before"><![CDATA[public function getOrder($order_id) {]]></search>
+			<add><![CDATA[
+	// kanenas: knns_bulk_delete_orders_button.xml (start) <<
+	public function deleteOrder($order_id) {
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order_product` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order_option` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order_voucher` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order_total` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "order_history` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE `or`, ort FROM `" . DB_PREFIX . "order_recurring` `or`, `" . DB_PREFIX . "order_recurring_transaction` `ort` WHERE order_id = '" . (int)$order_id . "' AND ort.order_recurring_id = `or`.order_recurring_id");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "affiliate_transaction` WHERE order_id = '" . (int)$order_id . "'");
+
+		// Delete voucher data as well
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "voucher` WHERE order_id = '" . (int)$order_id . "'");
+		$this->db->query("DELETE FROM `" . DB_PREFIX . "voucher_history` WHERE order_id = '" . (int)$order_id . "'");
+	}
+	// kanenas: knns_bulk_delete_orders_button.xml (end) <<
+			]]></add>
+		</operation>
+	</file>
+	<file path="admin/view/template/sale/" name="order_list.tpl" error="log">
+		<operation error="skip">
+			<search position="after"><![CDATA[<button type="submit" id="button-shipping" form="form-order" formaction="<?php echo $shipping; ?>" data-toggle="tooltip" title="<?php echo $button_shipping_print; ?>" class="btn btn-info"><i class="fa fa-truck"></i></button>]]></search>
+			<add><![CDATA[
+        <?php // kanenas: knns_bulk_delete_orders_button.xml (start) << ?>
+        <button type="submit" id="button-delete" form="form-order" formaction="<?php echo $delete; ?>" data-toggle="tooltip" title="<?php echo $button_delete; ?>" class="btn btn-danger"><i class="fa fa-trash-o"></i></button>
+        <?php // kanenas: knns_bulk_delete_orders_button.xml (end) << ?>
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search position="before"><![CDATA[$('button[id^=\'button-delete\']').on('click', function(e) {]]></search>
+			<add><![CDATA[
+<?php // kanenas: knns_bulk_delete_orders_button.xml (start) << ?>
+$('#button-delete').on('click', function(e) {
+	$('#form-order').attr('action', this.getAttribute('formAction'));
+	
+	if (confirm('<?php echo $text_confirm; ?>')) {
+		$('#form-order').submit();
+	} else {
+		return false;
+	}
+});
+<?php // kanenas: knns_bulk_delete_orders_button.xml (end) << ?>
+			]]></add>
+		</operation>
+	</file>
+</modification>
